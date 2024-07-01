@@ -1,0 +1,75 @@
+version: '3.9'
+
+networks:
+  loki:
+    driver: bridge
+
+services:
+
+  # Serviço que gera os logs
+  gerador-logs:
+    image: fabricioveronez/gerador-log
+    ports:
+      - 8080:5000
+    volumes:
+      - "./logs/gerador-log:/logs"  # Volume onde o gerador de log salva os logs
+    networks:
+      - loki
+
+  # Serviço NGINX simulando serviço S3 para salvar os logs
+  nginx-s3-like:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx-s3-like
+    ports:
+      - "8000:80"
+    networks:
+      - loki
+    volumes:
+      - ./storage/data:/var/log/nginx:ro,z  # Define permissões como somente leitura (ro) e sistema de controle de acesso do Docker (z)
+    depends_on:
+      - loki
+
+  # Serviço Loki para armazenamento centralizado de logs
+  loki:
+    image: grafana/loki:latest
+    networks:
+      - loki
+
+  # Serviço Promtail para coletar e enviar logs para o Loki
+  promtail:
+    image: grafana/promtail:latest
+    ports:
+      - "9080:9080"
+    networks:
+      - loki
+    volumes:
+      - ./promtail/config/config.yaml:/etc/promtail/config/config.yaml
+      - ./promtail/position:/etc/promtail/position
+      - ./storage/data:/var/log/nginx:ro,z  # Monta o volume onde o NGINX armazena os logs com as mesmas permissões
+    depends_on:
+      - loki
+      - gerador-logs
+
+  # Serviço Grafana para visualização de logs
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+    networks:
+      - loki
+
+  # Serviço Nginx para proxy reverso (opcional, para acesso à Grafana)
+  nginx:
+    image: nginx:latest
+    ports:
+      - "3100:80"
+    networks:
+      - loki
+    depends_on:
+      - loki
+    volumes:
+      - ./loki/config/nginx-loki.conf:/etc/nginx/conf.d/default.conf  # Configuração do Nginx para proxy reverso
+

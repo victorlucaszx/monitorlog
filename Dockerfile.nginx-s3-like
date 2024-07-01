@@ -1,0 +1,19 @@
+# Dockerfile.nginx-s3-like para simular armazenamento S3-like
+
+# Use a imagem NGINX como base
+FROM nginx:latest
+
+# Copie arquivos de configuração do NGINX
+COPY ./nginx.conf /etc/nginx/nginx.conf
+
+# Cria diretório para armazenar logs
+RUN mkdir -p /usr/share/nginx/html/logs
+
+# Defina o diretório de logs como volume
+VOLUME /usr/share/nginx/html/logs
+
+# Exponha a porta 80
+EXPOSE 80
+
+# Comando para iniciar o NGINX em modo de daemon
+CMD ["nginx", "-g", "daemon off;"]
