@@ -1,0 +1,7 @@
+# Ignore a pastas
+storage/data/logs
+logs/gerador-log
+#arquivos
+.access.log
+.error.log
+.record.log
